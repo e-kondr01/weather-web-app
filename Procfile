@@ -1,1 +1,1 @@
-web: python3 weather/manage.py runserver
+web: python3 weatherweb/manage.py runserver
