@@ -1,1 +1,1 @@
-web: python3 weatherweb/manage.py runserver
+web: python weatherweb/manage.py runserver 0.0.0.0:5000
