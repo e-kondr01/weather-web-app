@@ -16,14 +16,14 @@ def main(request):
     #  Location params
     latitude = 60
     longitude = 30
-    days = 7
+    days = 3
 
     #  Weather.com API
     weathercom_json = requests.get(f'http://api.weather.com/v1/geocode/{latitude}/{longitude}/forecast/daily/{days}day.json',
         params={'apiKey': 'dc5ea0e10f11465f9ea0e10f11e65fa6'})
 
     #  Gismeteo API
-    gismeteo_json = requests.get('https://api.gismeteo.net/v2/weather/forecast',
+    gismeteo_json = requests.get('https://api.gismeteo.net/v2/weather/forecast/aggregate/4368',
         params={'latitude': latitude, 'longitude': longitude, 'days': days},
         headers={'X-Gismeteo-Token': '56b30cb255.3443075'})
     
