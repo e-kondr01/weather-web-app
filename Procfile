@@ -1,1 +1,1 @@
-web: gunicorn weatherweb.wsgi
+web: python3 weatherweb/manage.py runserver
