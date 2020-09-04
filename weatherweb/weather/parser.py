@@ -5,33 +5,47 @@ from bs4 import BeautifulSoup
 
 
 def parse_weather():
-    weathercom = parse_weathercom()
+    '''Формат погоды:
+    утро -
+    день -
+    вечер -
+    ночь -  '''
     gismeteo = parse_gismeteo()
-    yandex = parse_yandex()
+    dates = gismeteo[1]
+    gismeteo_temps = gismeteo[2]
+    yandex_temps = parse_yandex()
+    weathercom_temps = parse_weathercom()
     parsed_data = {
-        'weathercom': weathercom,
-        'gismeteo': gismeteo,
-        'yandex': yandex}
+        'dates': dates,
+        'weathercom_temps': weathercom_temps,
+        'gismeteo_temps': gismeteo_temps,
+        'yandex_temps': yandex_temps}
     return parsed_data
 
 
 def parse_weathercom():
-    '''
-    forecast = weathercom['forecasts']
-    parsed_data = []
-    for date in forecast:
-        max_temp = date['max_temp']
-        min_temp = date['min_temp']
-        day = date['fcst_valid_local']
-        parsed_data.append({
-            'day': day,
-            'max_temp': max_temp,
-            'min_temp': min_temp,
-        }
-        )
-    return parsed_data
-    '''
-    return None
+    #  Location params
+    latitude = 59.57
+    longitude = 30.19
+    days = 3
+
+    #  Weather.com API
+    resp = requests.get(f'http://api.weather.com/v1/geocode/{latitude}/{longitude}/forecast/daily/{days}day.json',
+        params={'apiKey': 'dc5ea0e10f11465f9ea0e10f11e65fa6'}).json()
+
+    # strange fahrenheit conversion
+    temps = []
+    for date in resp['forecasts']:
+        try:
+            temp_f = date['day']['temp']
+            temp = round((temp_f - 32) / 1.8)
+            temps.append(temp)
+        except KeyError:
+            pass
+        temp_f = date['night']['temp']
+        temp = round((temp_f - 32) / 1.8)
+        temps.append(temp)
+    return temps
 
 
 def parse_gismeteo():
@@ -48,15 +62,6 @@ def parse_gismeteo():
     for span in temp_spans:
         temps.append(span.string)
 
-    '''
-    time_of_day_spans = parser.find_all(class_='time_of_day')
-    time_of_day = []
-    for time in time_of_day_spans:
-        time_of_day.append(time.string)
-        if len(time_of_day) == 12:
-            break
-    '''
-
     day0 = parser.find('div', attrs={'data-index': '0'})
     day0 = day0.a.text
 
@@ -66,6 +71,10 @@ def parse_gismeteo():
     day2 = parser.find('div', attrs={'data-index': '2'})
     day2 = day2.a.text
 
+    #  list
+    dates = [day0, day1, day2]
+
+    #  dict
     gismeteo = {}
     days = []
     for i in range(3):
@@ -80,11 +89,27 @@ def parse_gismeteo():
     gismeteo[day1] = days[1]
     gismeteo[day2] = days[2]
 
-    return gismeteo
+    return (gismeteo, dates, temps)
 
 
 def parse_yandex():
-    return None
+    '''Формат для температуры - утро, день, вечер, ночь. По два значения температуры
+    на промежуток + третье "как ощущается" '''
+    headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64 AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.135 Safari/537.36'
+        }
+    resp = requests.get('https://yandex.ru/pogoda/saint-petersburg/details',
+                        headers=headers)
+    parser = BeautifulSoup(resp.text,
+                           'html.parser')
+
+    temp_spans = parser.find_all(class_='temp__value')
+    temps = []
+    for i in range(1, len(temp_spans) + 1):
+        if i % 3 != 0:
+            temps.append(temp_spans[i-1].string)
+
+    return temps
 
 
-print(parse_gismeteo())
+print(parse_weathercom())
