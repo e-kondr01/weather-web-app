@@ -24,8 +24,6 @@ def average(parsed_data):
             else:
                 weathercom_temps = parsed_data['weathercom_temps'][i * 2 - 1: i * 2 + 1]
 
-        print(yandex_temps)
-        print(gismeteo_temps)
         daily_temps['Утро'] = (sum(yandex_temps[0: 2]) + gismeteo_temps[0]) // 3
         if len(weathercom_temps) == 2:
             daily_temps['День'] = (sum(yandex_temps[2: 4]) + gismeteo_temps[1] + weathercom_temps[0]) // 4

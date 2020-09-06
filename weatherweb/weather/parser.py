@@ -3,23 +3,26 @@ import requests
 
 from bs4 import BeautifulSoup
 
+weekdays = {
+    'Пн': 'Monday',
+    'Вт': 'Tuesday',
+    'Ср': 'Wednesday',
+    'Чт': 'Thursday',
+    'Пт': 'Friday',
+    'Сб': 'Saturday',
+    'Вс': 'Sunday',
+}
 
-def parse_weather():
-    '''Формат погоды:
-    утро -
-    день -
-    вечер -
-    ночь -  '''
-    gismeteo = parse_gismeteo()
-    dates = gismeteo[1]
-    gismeteo_temps = gismeteo[2]
-    yandex_temps = parse_yandex()
-    weathercom_temps = parse_weathercom()
-    parsed_data = {
-        'dates': dates,
-        'weathercom_temps': weathercom_temps,
-        'gismeteo_temps': gismeteo_temps,
-        'yandex_temps': yandex_temps}
+
+def parse_weather(unit='', days_count=0):
+
+    forecasts_gismeteo, days_of_week = parse_gismeteo(days_count)
+    forecasts_yandex = parse_yandex(days_count, days_of_week)
+
+    parsed_data = {}
+    parsed_data['forecastsYandex'] = forecasts_yandex
+    parsed_data['forecastsGismeteo'] = forecasts_gismeteo
+    print(parsed_data)
     return parsed_data
 
 
@@ -45,71 +48,101 @@ def parse_weathercom():
         temp_f = date['night']['temp']
         temp = round((temp_f - 32) / 1.8)
         temps.append(temp)
-    return temps
+    return none
 
 
-def parse_gismeteo():
+def parse_gismeteo(days_count):
     headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64 AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.135 Safari/537.36'
         }
-    resp = requests.get('https://www.gismeteo.ru/weather-sankt-peterburg-4079/3-days/',
+    resp = requests.get('https://www.gismeteo.ru/weather-sankt-peterburg-4079/10-days/',
                         headers=headers)
     parser = BeautifulSoup(resp.text,
                            'html.parser')
 
+    forecasts_gismeteo = []
+
+    #  Temperature
     temp_spans = parser.find_all(class_='unit unit_temperature_c')
+    temp_strings = []
+    for i in range(days_count * 2):
+        temp_strings.append(temp_spans[i].string)
     temps = []
-    for span in temp_spans:
-        temps.append(span.string)
+    for temp_string in temp_strings:
+        temps.append(int(temp_string[1:]))
 
-    day0 = parser.find('div', attrs={'data-index': '0'})
-    day0 = day0.a.text
+    #  Day of week
+    day_divs = parser.find_all(class_='w_date__day')
+    days_ru = []
+    for i in range(days_count):
+        days_ru.append(day_divs[i].string)
+    days_of_week = []
+    for day in days_ru:
+        days_of_week.append(weekdays[day])
 
-    day1 = parser.find('div', attrs={'data-index': '1'})
-    day1 = day1.a.text
+    #  Shorcast
+    shortcast_spans = parser.find_all(class_='tooltip')
+    shortcasts = []
+    for i in range(days_count):
+        shortcasts.append(shortcast_spans[i]['data-text'])
 
-    day2 = parser.find('div', attrs={'data-index': '2'})
-    day2 = day2.a.text
+    for i in range(days_count):
+        date = {}
+        date['day_of_week'] = days_of_week[i]
+        date['day'] = {}
+        date['day']['shortcast'] = shortcasts[i]
+        date['day']['temp'] = temps[i * 2]
+        date['night'] = {}
+        date['night']['shortcast'] = shortcasts[i]
+        date['night']['temp'] = temps[i * 2 + 1]
+        forecasts_gismeteo.append(date)
 
-    #  list
-    dates = [day0, day1, day2]
-
-    #  dict
-    gismeteo = {}
-    days = []
-    for i in range(3):
-        day = {}
-        day['Ночь'] = temps[0 + 4 * i]
-        day['Утро'] = temps[1 + 4 * i]
-        day['День'] = temps[2 + 4 * i]
-        day['Вечер'] = temps[3 + 4 * i]
-        days.append(day)
-
-    gismeteo[day0] = days[0]
-    gismeteo[day1] = days[1]
-    gismeteo[day2] = days[2]
-
-    return (gismeteo, dates, temps)
+    return forecasts_gismeteo, days_of_week
 
 
-def parse_yandex():
+def parse_yandex(days_count, days_of_week):
     '''Формат для температуры - утро, день, вечер, ночь. По два значения температуры
     на промежуток + третье "как ощущается" '''
     headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64 AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.135 Safari/537.36'
         }
-    resp = requests.get('https://yandex.ru/pogoda/saint-petersburg/details',
+    resp = requests.get('https://yandex.ru/pogoda/saint-petersburg',
                         headers=headers)
     parser = BeautifulSoup(resp.text,
                            'html.parser')
+    forecasts_yandex = []
 
-    temp_spans = parser.find_all(class_='temp__value')
-    temps = []
-    for i in range(1, len(temp_spans) + 1):
-        if i % 3 != 0:
-            temps.append(temp_spans[i-1].string)
+    #  Temperature
+    day_temps = []
+    night_temps = []
+    day_temp_strings = []
+    night_temp_strings = []
+    day_divs = parser.find_all(class_='temp forecast-briefly__temp forecast-briefly__temp_day')
+    for i in range(4, 4 + days_count):
+        day_temp_strings.append(day_divs[i].contents[1].text)
+    for day_temp_string in day_temp_strings:
+        day_temps.append(int(day_temp_string[1:]))
+    night_divs = parser.find_all(class_='temp forecast-briefly__temp forecast-briefly__temp_night')
+    for i in range(4, 4 + days_count):
+        night_temp_strings.append(night_divs[i].contents[1].text)
+    for night_temp_string in night_temp_strings:
+        night_temps.append(int(night_temp_string[1:]))
 
-    return temps
+    #  Shorcast
+    shortcast_divs = parser.find_all(class_='forecast-briefly__condition')
+    shortcasts = []
+    for i in range(4, 4 + days_count):
+        shortcasts.append(shortcast_divs[i].text)
 
+    for i in range(days_count):
+        date = {}
+        date['day_of_week'] = days_of_week[i]
+        date['day'] = {}
+        date['day']['shortcast'] = shortcasts[i]
+        date['day']['temp'] = day_temps[i]
+        date['night'] = {}
+        date['night']['shortcast'] = shortcasts[i]
+        date['night']['temp'] = night_temps[i]
+        forecasts_yandex.append(date)
 
-print(parse_weathercom())
+    return forecasts_yandex
