@@ -12,9 +12,8 @@ def index(request):
 
 
 def main(request):
-    """Gets weather forecast for a week from three sources:
-    Gismeteo, weather.com and yandex weather. Returns
-    parsed forecast data and an average result."""
+    hours = request.GET.get('unit', 'celsius')
+    daysCount = request.GET.get('daysCount', 10)
 
     parsed_data = parse_weather()
     average_json = average(parsed_data)
