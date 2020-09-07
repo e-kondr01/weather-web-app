@@ -18,37 +18,65 @@ def parse_weather(unit='', days_count=0):
 
     forecasts_gismeteo, days_of_week = parse_gismeteo(days_count)
     forecasts_yandex = parse_yandex(days_count, days_of_week)
+    forecasts_weathercom = parse_weathercom(days_count, days_of_week)
 
     parsed_data = {}
+    parsed_data["metadata"] = {
+        "status_code": 200,
+        "unit": unit}
+
     parsed_data['forecastsYandex'] = forecasts_yandex
     parsed_data['forecastsGismeteo'] = forecasts_gismeteo
-    print(parsed_data)
+    parsed_data['forecastsWeatherCom'] = forecasts_weathercom
     return parsed_data
 
 
-def parse_weathercom():
-    #  Location params
-    latitude = 59.57
-    longitude = 30.19
-    days = 3
+def parse_weathercom(days_count, days_of_week):
+    headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64 AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.135 Safari/537.36'
+        }
+    resp = requests.get('https://weather.com/ru-RU/weather/tenday/l/4edb4827c7f66b1542f84ce1d8d644970e9b935d45d21d4d143e87d94925a4bf',
+                        headers=headers)
+    parser = BeautifulSoup(resp.text,
+                           'html.parser')
 
-    #  Weather.com API
-    resp = requests.get(f'http://api.weather.com/v1/geocode/{latitude}/{longitude}/forecast/daily/{days}day.json',
-        params={'apiKey': 'dc5ea0e10f11465f9ea0e10f11e65fa6'}).json()
+    #  Temperature
+    '''
+    starts_with_night = False
+    temp_spans = parser.find_all(attrs={'data-testid': "TemperatureValue"})
+    if len(temp_spans) % 2 != 0:
+        starts_with_night = True
+    '''
+    first_day_temp_span = parser.find(class_="_-_-node_modules-@wxu-components-src-molecule-DaypartDetails-DailyContent-DailyContent--temp--_8DL5")
 
-    # strange fahrenheit conversion
-    temps = []
-    for date in resp['forecasts']:
-        try:
-            temp_f = date['day']['temp']
-            temp = round((temp_f - 32) / 1.8)
-            temps.append(temp)
-        except KeyError:
-            pass
-        temp_f = date['night']['temp']
-        temp = round((temp_f - 32) / 1.8)
-        temps.append(temp)
-    return none
+    high_temp_spans = parser.find_all(class_="_-_-node_modules-@wxu-components-src-molecule-DaypartDetails-DetailsSummary-DetailsSummary--highTempValue--3x6cL")
+    high_temp_strings = []
+    for i in range(days_count - 1):
+        high_temp_strings.append(high_temp_spans[i].string)
+    high_temps = []
+    for high_temp_string in high_temp_strings:
+        high_temps.append(int(high_temp_string[:len(high_temp_string)-1]))
+    high_temps.insert(0, 999)
+
+    low_temp_spans = parser.find_all(class_="_-_-node_modules-@wxu-components-src-molecule-DaypartDetails-DetailsSummary-DetailsSummary--lowTempValue--1DlJK")
+    low_temp_spans.insert(0, first_day_temp_span)
+    low_temp_strings = []
+    for i in range(days_count):
+        low_temp_strings.append(low_temp_spans[i].string)
+    low_temps = []
+    for low_temp_string in low_temp_strings:
+        low_temps.append(int(low_temp_string[:len(low_temp_string)-1]))
+
+    #  Shortcast
+    shortcast_p = parser.find_all(class_="_-_-node_modules-@wxu-components-src-molecule-DaypartDetails-DailyContent-DailyContent--narrative--3AcXd")
+    shortcasts = []
+    for i in range(days_count):
+        shortcasts.append(shortcast_p[i].text)
+
+    forecasts_weathercom = fill_table(days_count=days_count, days_of_week=days_of_week,
+                                      shortcasts=shortcasts, day_temps=high_temps,
+                                      night_temps=low_temps)
+    return forecasts_weathercom
 
 
 def parse_gismeteo(days_count):
@@ -60,8 +88,6 @@ def parse_gismeteo(days_count):
     parser = BeautifulSoup(resp.text,
                            'html.parser')
 
-    forecasts_gismeteo = []
-
     #  Temperature
     temp_spans = parser.find_all(class_='unit unit_temperature_c')
     temp_strings = []
@@ -70,6 +96,13 @@ def parse_gismeteo(days_count):
     temps = []
     for temp_string in temp_strings:
         temps.append(int(temp_string[1:]))
+    day_temps = []
+    night_temps = []
+    for i in range(len(temps)):
+        if i % 2 == 0:
+            day_temps.append(temps[i])
+        else:
+            night_temps.append(temps[i])
 
     #  Day of week
     day_divs = parser.find_all(class_='w_date__day')
@@ -80,29 +113,19 @@ def parse_gismeteo(days_count):
     for day in days_ru:
         days_of_week.append(weekdays[day])
 
-    #  Shorcast
+    #  Shortcast
     shortcast_spans = parser.find_all(class_='tooltip')
     shortcasts = []
     for i in range(days_count):
         shortcasts.append(shortcast_spans[i]['data-text'])
 
-    for i in range(days_count):
-        date = {}
-        date['day_of_week'] = days_of_week[i]
-        date['day'] = {}
-        date['day']['shortcast'] = shortcasts[i]
-        date['day']['temp'] = temps[i * 2]
-        date['night'] = {}
-        date['night']['shortcast'] = shortcasts[i]
-        date['night']['temp'] = temps[i * 2 + 1]
-        forecasts_gismeteo.append(date)
-
-    return forecasts_gismeteo, days_of_week
+    forecasts_gismeteo = fill_table(days_count=days_count, days_of_week=days_of_week,
+                                    shortcasts=shortcasts, day_temps=day_temps,
+                                    night_temps=night_temps)
+    return (forecasts_gismeteo, days_of_week)
 
 
 def parse_yandex(days_count, days_of_week):
-    '''Формат для температуры - утро, день, вечер, ночь. По два значения температуры
-    на промежуток + третье "как ощущается" '''
     headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64 AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.135 Safari/537.36'
         }
@@ -110,7 +133,6 @@ def parse_yandex(days_count, days_of_week):
                         headers=headers)
     parser = BeautifulSoup(resp.text,
                            'html.parser')
-    forecasts_yandex = []
 
     #  Temperature
     day_temps = []
@@ -128,12 +150,21 @@ def parse_yandex(days_count, days_of_week):
     for night_temp_string in night_temp_strings:
         night_temps.append(int(night_temp_string[1:]))
 
-    #  Shorcast
+    #  Shortcast
     shortcast_divs = parser.find_all(class_='forecast-briefly__condition')
     shortcasts = []
     for i in range(4, 4 + days_count):
         shortcasts.append(shortcast_divs[i].text)
 
+    forecasts_yandex = fill_table(days_count=days_count, days_of_week=days_of_week,
+                                  shortcasts=shortcasts, day_temps=day_temps,
+                                  night_temps=night_temps)
+    return forecasts_yandex
+
+
+def fill_table(days_count=10, days_of_week=[], shortcasts=[], day_temps=[],
+               night_temps=[]):
+    forecasts = []
     for i in range(days_count):
         date = {}
         date['day_of_week'] = days_of_week[i]
@@ -143,6 +174,6 @@ def parse_yandex(days_count, days_of_week):
         date['night'] = {}
         date['night']['shortcast'] = shortcasts[i]
         date['night']['temp'] = night_temps[i]
-        forecasts_yandex.append(date)
+        forecasts.append(date)
 
-    return forecasts_yandex
+    return forecasts

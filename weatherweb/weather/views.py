@@ -16,6 +16,6 @@ def main(request):
     days_count = request.GET.get('daysCount', '10')
 
     parsed_data = parse_weather(unit=unit, days_count=int(days_count))
-    #average_json = average(parsed_data)
-
+    average_data = average(parsed_data)
+    parsed_data['forecastsAverage'] = average_data
     return JsonResponse(parsed_data, json_dumps_params={'ensure_ascii': False})
