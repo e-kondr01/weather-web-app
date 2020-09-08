@@ -41,25 +41,31 @@ def parse_weathercom(days_count, days_of_week):
                            'html.parser')
 
     #  Temperature
-    '''
+
     starts_with_night = False
     temp_spans = parser.find_all(attrs={'data-testid': "TemperatureValue"})
     if len(temp_spans) % 2 != 0:
         starts_with_night = True
-    '''
-    first_day_temp_span = parser.find(class_="_-_-node_modules-@wxu-components-src-molecule-DaypartDetails-DailyContent-DailyContent--temp--_8DL5")
+
+    first_temp_spans = parser.find_all(class_="_-_-node_modules-@wxu-components-src-molecule-DaypartDetails-DailyContent-DailyContent--temp--_8DL5")
 
     high_temp_spans = parser.find_all(class_="_-_-node_modules-@wxu-components-src-molecule-DaypartDetails-DetailsSummary-DetailsSummary--highTempValue--3x6cL")
+    if not starts_with_night:
+        high_temp_spans.insert(0, first_temp_spans[0])
     high_temp_strings = []
-    for i in range(days_count - 1):
+    for i in range(days_count):
         high_temp_strings.append(high_temp_spans[i].string)
     high_temps = []
     for high_temp_string in high_temp_strings:
         high_temps.append(int(high_temp_string[:len(high_temp_string)-1]))
-    high_temps.insert(0, 999)
+    if starts_with_night:
+        high_temps.insert(0, None)
 
     low_temp_spans = parser.find_all(class_="_-_-node_modules-@wxu-components-src-molecule-DaypartDetails-DetailsSummary-DetailsSummary--lowTempValue--1DlJK")
-    low_temp_spans.insert(0, first_day_temp_span)
+    if starts_with_night:
+        low_temp_spans.insert(0, first_temp_spans[0])
+    else:
+        low_temp_spans.insert(0, first_temp_spans[1])
     low_temp_strings = []
     for i in range(days_count):
         low_temp_strings.append(low_temp_spans[i].string)

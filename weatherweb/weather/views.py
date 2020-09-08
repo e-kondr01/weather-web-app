@@ -12,7 +12,7 @@ def index(request):
 
 
 def main(request):
-    unit = request.GET.get('unit', 'Celsius')
+    unit = request.GET.get('unit', 'celsius')
     days_count = request.GET.get('daysCount', '10')
 
     parsed_data = parse_weather(unit=unit, days_count=int(days_count))
