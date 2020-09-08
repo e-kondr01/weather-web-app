@@ -23,9 +23,9 @@ def average(parsed_data):
         date['night']['temp'] = round(1 / 3 * (yandex['night']['temp'] + gismeteo['night']['temp'] +
                                       weathercom['night']['temp']), 1)
         date['night']['shortcasts'] = []
-        date['night']['shortcasts'].append(yandex['day']['shortcast'])
-        date['night']['shortcasts'].append(gismeteo['day']['shortcast'])
-        date['night']['shortcasts'].append(weathercom['day']['shortcast'])
+        date['night']['shortcasts'].append(yandex['night']['shortcast'])
+        date['night']['shortcasts'].append(gismeteo['night']['shortcast'])
+        date['night']['shortcasts'].append(weathercom['night']['shortcast'])
 
         average_data.append(date)
     return average_data

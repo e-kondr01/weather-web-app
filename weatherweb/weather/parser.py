@@ -75,13 +75,25 @@ def parse_weathercom(days_count, days_of_week):
 
     #  Shortcast
     shortcast_p = parser.find_all(class_="_-_-node_modules-@wxu-components-src-molecule-DaypartDetails-DailyContent-DailyContent--narrative--3AcXd")
-    shortcasts = []
-    for i in range(days_count):
-        shortcasts.append(shortcast_p[i].text)
-
+    print(shortcast_p)
+    shortcasts_day = []
+    shortcasts_night = []
+    if starts_with_night:
+        for i in range(1, days_count * 2):
+            if i % 2 == 0:
+                shortcasts_day.append(shortcast_p[i].text)
+            else:
+                shortcasts_night.append(shortcast_p[i].text)
+        shortcasts_day.insert(0, 'No info')
+    else:
+        for i in range(days_count * 2):
+            if i % 2 == 0:
+                shortcasts_day.append(shortcast_p[i].text)
+            else:
+                shortcasts_night.append(shortcast_p[i].text)
     forecasts_weathercom = fill_table(days_count=days_count, days_of_week=days_of_week,
-                                      shortcasts=shortcasts, day_temps=high_temps,
-                                      night_temps=low_temps)
+                                      shortcasts_day=shortcasts_day, day_temps=high_temps,
+                                      night_temps=low_temps, shortcasts_night=shortcasts_night)
     return forecasts_weathercom
 
 
@@ -126,8 +138,8 @@ def parse_gismeteo(days_count):
         shortcasts.append(shortcast_spans[i]['data-text'])
 
     forecasts_gismeteo = fill_table(days_count=days_count, days_of_week=days_of_week,
-                                    shortcasts=shortcasts, day_temps=day_temps,
-                                    night_temps=night_temps)
+                                    shortcasts_day=shortcasts, day_temps=day_temps,
+                                    night_temps=night_temps, shortcasts_night=shortcasts)
     return (forecasts_gismeteo, days_of_week)
 
 
@@ -163,22 +175,22 @@ def parse_yandex(days_count, days_of_week):
         shortcasts.append(shortcast_divs[i].text)
 
     forecasts_yandex = fill_table(days_count=days_count, days_of_week=days_of_week,
-                                  shortcasts=shortcasts, day_temps=day_temps,
-                                  night_temps=night_temps)
+                                  shortcasts_day=shortcasts, day_temps=day_temps,
+                                  night_temps=night_temps, shortcasts_night=shortcasts)
     return forecasts_yandex
 
 
-def fill_table(days_count=10, days_of_week=[], shortcasts=[], day_temps=[],
-               night_temps=[]):
+def fill_table(days_count=10, days_of_week=[], shortcasts_day=[],
+               day_temps=[], shortcasts_night=[], night_temps=[]):
     forecasts = []
     for i in range(days_count):
         date = {}
         date['day_of_week'] = days_of_week[i]
         date['day'] = {}
-        date['day']['shortcast'] = shortcasts[i]
+        date['day']['shortcast'] = shortcasts_day[i]
         date['day']['temp'] = day_temps[i]
         date['night'] = {}
-        date['night']['shortcast'] = shortcasts[i]
+        date['night']['shortcast'] = shortcasts_night[i]
         date['night']['temp'] = night_temps[i]
         forecasts.append(date)
 
