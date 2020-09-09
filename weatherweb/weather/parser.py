@@ -75,7 +75,6 @@ def parse_weathercom(days_count, days_of_week):
 
     #  Shortcast
     shortcast_p = parser.find_all(class_="_-_-node_modules-@wxu-components-src-molecule-DaypartDetails-DailyContent-DailyContent--narrative--3AcXd")
-    print(shortcast_p)
     shortcasts_day = []
     shortcasts_night = []
     if starts_with_night:
