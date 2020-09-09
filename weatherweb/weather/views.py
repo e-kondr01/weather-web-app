@@ -5,6 +5,7 @@ from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from weather.average import average
 from weather.parser import parse_weather
+from django.views.decorators.cache import cache_page
 
 
 def index(request):
