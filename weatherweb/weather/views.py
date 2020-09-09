@@ -11,6 +11,7 @@ def index(request):
     return HttpResponseRedirect('/weather/')
 
 
+@cache_page(60 * 2)
 def main(request):
     unit = request.GET.get('unit', 'celsius')
     days_count = request.GET.get('daysCount', '10')
