@@ -1,1 +1,1 @@
-web: gunicorn weatherweb.wsgi 0.0.0.0:$PORT
+web: gunicorn weatherweb/weatherweb.wsgi 0.0.0.0:$PORT
