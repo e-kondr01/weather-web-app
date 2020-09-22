@@ -47,13 +47,39 @@ def parse_weathercom(days_count, days_of_week):
     if len(temp_spans) % 2 != 0:
         starts_with_night = True
 
-    first_temp_spans = parser.find_all(class_="_-_-node_modules-@wxu-components-src-molecule-DaypartDetails-DailyContent-DailyContent--temp--_8DL5")
+    high_temp_spans = []
+    low_temp_spans = []
 
-    high_temp_spans = parser.find_all(class_="_-_-node_modules-@wxu-components-src-molecule-DaypartDetails-DetailsSummary-DetailsSummary--highTempValue--3x6cL")
-    if not starts_with_night:
-        high_temp_spans.insert(0, first_temp_spans[0])
+    if starts_with_night:
+        low_temp_spans.append(temp_spans[0])
+        c = -1
+        for i in range(1, days_count * 4 - 4):
+            c += 1
+            if c == 0:
+                high_temp_spans.append(temp_spans[i])
+            if c == 1:
+                low_temp_spans.append(temp_spans[i])
+            if c == 2:
+                c = -2
+    else:
+        high_temp_spans.append(temp_spans[0])
+        low_temp_spans.append(temp_spans[1])
+        c = -1
+        for i in range(2, days_count * 4 - 4):
+            c += 1
+            if c == 0:
+                high_temp_spans.append(temp_spans[i])
+            if c == 1:
+                low_temp_spans.append(temp_spans[i])
+            if c == 2:
+                c = -2
+
     high_temp_strings = []
-    for i in range(days_count):
+    if starts_with_night:
+        end = 1
+    else:
+        end = 0
+    for i in range(days_count - end):
         high_temp_strings.append(high_temp_spans[i].string)
     high_temps = []
     for high_temp_string in high_temp_strings:
@@ -61,11 +87,6 @@ def parse_weathercom(days_count, days_of_week):
     if starts_with_night:
         high_temps.insert(0, None)
 
-    low_temp_spans = parser.find_all(class_="_-_-node_modules-@wxu-components-src-molecule-DaypartDetails-DetailsSummary-DetailsSummary--lowTempValue--1DlJK")
-    if starts_with_night:
-        low_temp_spans.insert(0, first_temp_spans[0])
-    else:
-        low_temp_spans.insert(0, first_temp_spans[1])
     low_temp_strings = []
     for i in range(days_count):
         low_temp_strings.append(low_temp_spans[i].string)
@@ -74,7 +95,7 @@ def parse_weathercom(days_count, days_of_week):
         low_temps.append(int(low_temp_string[:len(low_temp_string)-1]))
 
     #  Shortcast
-    shortcast_p = parser.find_all(class_="_-_-node_modules-@wxu-components-src-molecule-DaypartDetails-DailyContent-DailyContent--narrative--3AcXd")
+    shortcast_p = parser.find_all(attrs = {'data-testid': "wxPhrase"})
     shortcasts_day = []
     shortcasts_night = []
     if starts_with_night:
